@@ -6,6 +6,7 @@ var browserSync         = require('browser-sync').create();
 var handlebars          = require('gulp-compile-handlebars');
 //var nunjucksRender    = require('gulp-nunjucks-render');
 //var mustache            = require('gulp-mustache-plus');
+var uglify              = require('gulp-uglify');
 var data                = require('gulp-data');
 var gutil               = require('gulp-util');
 var rename              = require("gulp-rename");
@@ -18,23 +19,25 @@ var src = {
 };
 
 var dist = {
-    scss: 'dist/sass/**/*.scss',
-    css:  'dist/css',
-    html: 'dist/*.html'
+    scss:       'dist/sass/**/*.scss',
+    css:        'dist/css',
+    scripts:    'dist/js',
+    html:       'dist/*.html'
 };
 
 //sc5-styleguide - output
 var outputPath = 'output';
 
-// Static Server + watching scss/html files
-gulp.task('serve', ['sass'], function() {
+gulp.task('serve', function() {
 
     browserSync.init({
-        server: "./dest"
+        server: "./dist"
     });
+
     gulp.watch(['./src/js/*.js'], ['scripts']);
     gulp.watch(['./src/sass/**/*.scss'], ['sass']);
     gulp.watch('./**/*.hbs', ['templates']);
+
 });
 
 
@@ -44,15 +47,6 @@ gulp.task('clean:dist', function () {
   ]);
 });
 
-gulp.task('serve', function () {
-  browserSync.init({
-    server: {
-      baseDir: './dist'
-    }
-  });
-});
-
-// Compile sass into CSS & auto-inject into browsers
 gulp.task('sass', function() {
     return gulp.src(src.scss)
         .pipe(sass())
@@ -60,24 +54,16 @@ gulp.task('sass', function() {
         .pipe(browserSync.stream());
 });
 
-gulp.task('html', function() {
-    return gulp.src('./src/*.html')
-        .pipe(gulp.dest('./dist'))
-        .pipe(browserSync.stream());
-});
-
 gulp.task('scripts', function() {
     return gulp.src('src/js/*.js')
         //.pipe(concat('main.js'))
         //.pipe(rename({suffix: '.min'}))
-        //.pipe(uglify())
-        .pipe(gulp.dest('./dist/js'));
+        .pipe(uglify())
+        .pipe(gulp.dest(dist.scripts))
+        .pipe(browserSync.stream());
 });
 
 gulp.task('templates', function () {
-	//var templateData = {
-	//	firstName: 'John'
-	//},
 
     var templateData = JSON.parse(fs.readFileSync('./src/data/sitedata.json')),
 
@@ -85,13 +71,12 @@ gulp.task('templates', function () {
 		ignorePartials: true,
 		batch : ['./src/partials'],
 		helpers : {
-			capitals : function(str){
+			capitals : function(str) {
 				return str.toUpperCase();
 			}
 		}
 	}
-
-	return gulp.src('src/**/*.hbs')
+	return gulp.src('src/*.hbs')
 		.pipe(handlebars(templateData, options))
         .pipe(rename({
             extname: ".html"
@@ -100,11 +85,5 @@ gulp.task('templates', function () {
         .pipe(browserSync.stream());
 });
 
-
 // Default task
-gulp.task('default', ['clean:dist', 'templates', 'sass', 'serve'], function() {
-  //gulp.watch('./src/*.html', ['html']);
-  gulp.watch(['./src/js/*.js'], ['scripts']);
-  gulp.watch(['./src/sass/**/*.scss'], ['sass']);
-  gulp.watch('./**/*.hbs', ['templates']);
-});
+gulp.task('default', ['clean:dist', 'scripts', 'templates', 'sass', 'serve'], function() {});
